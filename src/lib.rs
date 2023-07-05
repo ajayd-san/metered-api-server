@@ -1,7 +1,9 @@
+mod database;
 use std::io;
 
 use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use serde::Serialize;
+use tokio::sync;
 use uuid::Uuid;
 
 #[derive(Serialize)]
@@ -19,10 +21,11 @@ struct KeyRegistarationData {
 impl KeyRegistarationData {
     fn new() -> Self {
         let api_key = Uuid::new_v4().simple().to_string();
-        KeyRegistarationData {
+        let api_key_data = KeyRegistarationData {
             api_key,
             quota_per_min: 10,
-        }
+        };
+        api_key_data
     }
 }
 
