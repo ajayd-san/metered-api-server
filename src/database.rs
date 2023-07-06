@@ -8,6 +8,11 @@ pub struct DatabaseMgr {
 
 const DB_URL: &str = "sqlite://api_key_data.db";
 
+#[derive(Debug)]
+pub enum DbResult {
+    Ok,
+    QueryRes(u32),
+}
 impl DatabaseMgr {
     pub async fn new() -> Self {
         //TODO: set max pool connnections to 8.
@@ -15,7 +20,7 @@ impl DatabaseMgr {
         DatabaseMgr { pool }
     }
 
-    pub async fn add_key(&self, key: &KeyRegistarationData) -> sqlx::Result<()> {
+    pub async fn add_key(&self, key: &KeyRegistarationData) -> sqlx::Result<DbResult> {
         sqlx::query!(
             "
             INSERT INTO keys (api_key, queries_left) VALUES ($1, $2)
@@ -26,10 +31,10 @@ impl DatabaseMgr {
         .execute(&self.pool)
         .await?;
 
-        Ok(())
+        Ok(DbResult::Ok)
     }
 
-    pub async fn update_quota(&self, key: &KeyRegistarationData) -> sqlx::Result<()> {
+    pub async fn update_quota(&self, key: &KeyRegistarationData) -> sqlx::Result<DbResult> {
         sqlx::query!(
             "
             UPDATE keys SET queries_left = queries_left - 1 WHERE api_key = $1
@@ -40,10 +45,10 @@ impl DatabaseMgr {
         .await?;
 
         // Ok(res.queries_left.unwrap().try_into().unwrap())
-        Ok(())
+        Ok(DbResult::Ok)
     }
 
-    pub async fn check_quota(&self, key: &KeyRegistarationData) -> sqlx::Result<u32> {
+    pub async fn check_quota(&self, key: &KeyRegistarationData) -> sqlx::Result<DbResult> {
         let res = sqlx::query!(
             "
             SELECT queries_left FROM keys WHERE api_key = $1
@@ -51,10 +56,10 @@ impl DatabaseMgr {
             key.api_key
         )
         .fetch_one(&self.pool)
-        .await
-        .unwrap();
+        .await?;
 
-        Ok(res.queries_left.unwrap() as u32)
+        Ok(DbResult::QueryRes(res.queries_left.unwrap() as u32))
+        // Err(sqlx::Error::RowNotFound)
     }
 }
 
