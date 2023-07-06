@@ -1,21 +1,21 @@
 use sqlx::{self, sqlite::SqliteQueryResult, SqlitePool};
 
-use crate::KeyRegistarationData;
+use metered_api_server::KeyRegistarationData;
 
-struct DatabaseMgr {
+pub struct DatabaseMgr {
     pool: SqlitePool,
 }
 
 const DB_URL: &str = "sqlite://api_key_data.db";
 
 impl DatabaseMgr {
-    async fn new() -> Self {
+    pub async fn new() -> Self {
         //TODO: set max pool connnections to 8.
         let pool = SqlitePool::connect(DB_URL).await.unwrap();
         DatabaseMgr { pool }
     }
 
-    async fn add_key(&self, key: &KeyRegistarationData) -> sqlx::Result<()> {
+    pub async fn add_key(&self, key: &KeyRegistarationData) -> sqlx::Result<()> {
         sqlx::query!(
             "
             INSERT INTO keys (api_key, queries_left) VALUES ($1, $2)
@@ -29,7 +29,7 @@ impl DatabaseMgr {
         Ok(())
     }
 
-    async fn update_quota(&self, key: &KeyRegistarationData) -> sqlx::Result<()> {
+    pub async fn update_quota(&self, key: &KeyRegistarationData) -> sqlx::Result<()> {
         sqlx::query!(
             "
             UPDATE keys SET queries_left = queries_left - 1 WHERE api_key = $1
@@ -43,7 +43,7 @@ impl DatabaseMgr {
         Ok(())
     }
 
-    async fn check_quota(&self, key: &KeyRegistarationData) -> sqlx::Result<u32> {
+    pub async fn check_quota(&self, key: &KeyRegistarationData) -> sqlx::Result<u32> {
         let res = sqlx::query!(
             "
             SELECT queries_left FROM keys WHERE api_key = $1
