@@ -1,5 +1,6 @@
 use actix_web::{
-    error::{self, ErrorInternalServerError}, get,
+    error::{self, ErrorInternalServerError},
+    get,
     http::{
         header::{self, ContentType},
         StatusCode,
@@ -9,7 +10,8 @@ use actix_web::{
 };
 
 use metered_api_server::{
-    DbInstruction, InstructionKind, KeyRegistarationData, ResponseData, BAD_REQUEST_MSG, TOO_MANY_REQUESTS_MSG,
+    DbInstruction, InstructionKind, KeyRegistarationData, ResponseData, BAD_REQUEST_MSG,
+    TOO_MANY_REQUESTS_MSG,
 };
 
 use thiserror::Error;
@@ -103,7 +105,12 @@ async fn get_data(
                 let (oneshot_sender, oneshot_receiver) = oneshot::channel();
                 let key_data = KeyRegistarationData::get_with_exisiting(api_key);
                 let db_instruction = DbInstruction::new(InstructionKind::Update, key_data);
-                mpsc_sender.send((db_instruction, oneshot_sender)).await.map_err(ErrorInternalServerError)?;
+                mpsc_sender
+                    .send((db_instruction, oneshot_sender))
+                    .await
+                    .map_err(ErrorInternalServerError)?;
+                oneshot_receiver.await.map_err(ErrorInternalServerError)?;
+
                 return Ok(web::Json(ResponseData {
                     id: 10,
                     msg: String::from("data"),
@@ -112,7 +119,6 @@ async fn get_data(
                 return Err(CustomError::QuotaExhausted)?;
             }
         }
-
     }
     Ok(web::Json(ResponseData {
         id: 10000,

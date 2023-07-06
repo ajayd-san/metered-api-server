@@ -1,12 +1,12 @@
-use uuid::Uuid;
 use serde::Serialize;
+use uuid::Uuid;
 
 pub const TOO_MANY_REQUESTS_MSG: ErrorResponse = ErrorResponse {
-    message: "Quota exhausted try again later"
+    message: "Quota exhausted try again later",
 };
 
 pub const BAD_REQUEST_MSG: ErrorResponse = ErrorResponse {
-    message: "bad credentials"
+    message: "bad credentials",
 };
 
 #[derive(Serialize)]
@@ -36,7 +36,7 @@ pub struct KeyRegistarationData {
 
 #[derive(Serialize)]
 pub struct ErrorResponse<'a> {
-    message: &'a str
+    message: &'a str,
 }
 
 impl DbInstruction {
@@ -55,6 +55,9 @@ impl KeyRegistarationData {
     }
 
     pub fn get_with_exisiting(key: &str) -> Self {
-        KeyRegistarationData { api_key: key.to_string(), quota_per_min: 10 }
+        KeyRegistarationData {
+            api_key: key.to_string(),
+            quota_per_min: 10,
+        }
     }
 }

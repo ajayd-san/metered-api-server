@@ -17,6 +17,6 @@ pub async fn bridge(
             Update => dbm.update_quota(&db_instruction.key_data).await,
             Query => dbm.check_quota(&db_instruction.key_data).await,
         };
-        oneshot_sender.send(db_res);
+        oneshot_sender.send(db_res).unwrap();
     }
 }

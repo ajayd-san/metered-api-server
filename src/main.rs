@@ -1,14 +1,13 @@
-mod services;
-mod mpsc_bridge;
 mod database;
+mod mpsc_bridge;
+mod services;
 
 use actix_web::{get, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use tokio::sync;
 
 use std::io;
 
-use services::{hola, register_client, get_data};
-
+use services::{get_data, hola, register_client};
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
