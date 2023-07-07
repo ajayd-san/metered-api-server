@@ -15,6 +15,12 @@ pub struct ResponseData {
     pub msg: String,
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub enum Db {
+    API_KEY,
+    IP_BOOK
+}
+
 #[derive(Debug)]
 pub enum InstructionKind {
     Register,
@@ -28,10 +34,11 @@ pub struct DbInstruction {
     pub key_data: KeyRegistarationData,
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize,Clone, Debug)]
 pub struct KeyRegistarationData {
-    pub api_key: String,
+    pub key: String,
     pub quota_per_min: u32,
+    pub db_name: Db,
 }
 
 #[derive(Serialize)]
@@ -46,18 +53,20 @@ impl DbInstruction {
 }
 
 impl KeyRegistarationData {
-    pub fn new() -> Self {
+    pub fn new(db_name: Db) -> Self {
         let api_key = Uuid::new_v4().simple().to_string();
         KeyRegistarationData {
-            api_key,
+            key: api_key,
             quota_per_min: 10,
+            db_name,
         }
     }
 
-    pub fn get_with_exisiting(key: &str) -> Self {
+    pub fn get_with_exisiting(key: &str, db_name: Db) -> Self {
         KeyRegistarationData {
-            api_key: key.to_string(),
+            key: key.to_string(),
             quota_per_min: 10,
+            db_name
         }
     }
 }

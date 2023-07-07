@@ -10,12 +10,12 @@ use actix_web::{
 };
 
 use metered_api_server::{
-    DbInstruction, InstructionKind, KeyRegistarationData, ResponseData, BAD_REQUEST_MSG,
+    Db, DbInstruction, InstructionKind, KeyRegistarationData, ResponseData, BAD_REQUEST_MSG,
     TOO_MANY_REQUESTS_MSG,
 };
 
 use thiserror::Error;
-use tokio::sync::{self, oneshot};
+use tokio::sync::{self, mpsc, oneshot};
 
 use crate::database::DbResult;
 
@@ -64,7 +64,7 @@ async fn register_client(
         sync::mpsc::Sender<(DbInstruction, oneshot::Sender<sqlx::Result<DbResult>>)>,
     >,
 ) -> impl Responder {
-    let key_reg = KeyRegistarationData::new();
+    let key_reg = KeyRegistarationData::new(Db::API_KEY);
     let db_instruction = DbInstruction::new(InstructionKind::Register, key_reg.clone());
     let (oneshot_sender, oneshot_receiver) = oneshot::channel();
     mpsc_sender
@@ -79,47 +79,106 @@ async fn register_client(
     }
 }
 
+async fn send_to_mpsc(
+    instr_kind: InstructionKind,
+    key_data: KeyRegistarationData,
+    mpsc_sender: mpsc::Sender<(DbInstruction, oneshot::Sender<sqlx::Result<DbResult>>)>,
+) -> sqlx::Result<DbResult> {
+    let db_instruction = DbInstruction::new(instr_kind, key_data.clone());
+    let (oneshot_sender, oneshot_receiver) = oneshot::channel();
+    mpsc_sender
+        .send((db_instruction, oneshot_sender))
+        .await
+        .unwrap();
+    oneshot_receiver
+        .await
+        .map_err(ErrorInternalServerError)
+        .unwrap()
+}
+
 #[get("/get")]
 async fn get_data(
-    mpsc_sender: web::Data<
-        sync::mpsc::Sender<(DbInstruction, oneshot::Sender<sqlx::Result<DbResult>>)>,
-    >,
+    mpsc_sender: web::Data<mpsc::Sender<(DbInstruction, oneshot::Sender<sqlx::Result<DbResult>>)>>,
     request: HttpRequest,
 ) -> actix_web::Result<impl Responder> {
     let headers = request.headers();
     if let Some(api_key) = headers.get(header::AUTHORIZATION) {
         let api_key = api_key.to_str().unwrap();
-        let key_data = KeyRegistarationData::get_with_exisiting(api_key);
-        let db_instruction = DbInstruction::new(InstructionKind::Query, key_data);
 
-        let (oneshot_sender, oneshot_receiver) = oneshot::channel();
-        mpsc_sender
-            .send((db_instruction, oneshot_sender))
-            .await
-            .unwrap();
-        let db_response = oneshot_receiver.await.unwrap();
+        let key_data = KeyRegistarationData::get_with_exisiting(api_key, Db::API_KEY);
+        let db_response = send_to_mpsc(
+            InstructionKind::Query,
+            key_data.clone(),
+            mpsc_sender.get_ref().clone(),
+        )
+        .await;
         let db_response = db_response.map_err(|e| CustomError::SqlxErr(e))?;
 
         if let DbResult::QueryRes(queries_left) = db_response {
             if queries_left > 0 {
-                let (oneshot_sender, oneshot_receiver) = oneshot::channel();
-                let key_data = KeyRegistarationData::get_with_exisiting(api_key);
-                let db_instruction = DbInstruction::new(InstructionKind::Update, key_data);
-                mpsc_sender
-                    .send((db_instruction, oneshot_sender))
-                    .await
-                    .map_err(ErrorInternalServerError)?;
-                oneshot_receiver.await.map_err(ErrorInternalServerError)?;
-
+                let db_response = send_to_mpsc(
+                    InstructionKind::Update,
+                    key_data,
+                    mpsc_sender.get_ref().clone(),
+                )
+                .await;
+                db_response.map_err(CustomError::SqlxErr)?;
                 return Ok(web::Json(ResponseData {
                     id: 10,
                     msg: String::from("data"),
                 }));
             } else {
+                //BUG: why cant i use .into()?
                 return Err(CustomError::QuotaExhausted)?;
             }
         }
     }
+
+    //INFO: REQUESTS WITHOUT API KEY HANDLED HERE
+
+    let conn_info = request.connection_info();
+    let client_ip = conn_info.realip_remote_addr().unwrap();
+
+    let key_data = KeyRegistarationData::get_with_exisiting(client_ip, Db::IP_BOOK);
+    let db_response = send_to_mpsc(
+        InstructionKind::Query,
+        key_data.clone(),
+        mpsc_sender.get_ref().clone(),
+    )
+    .await;
+    if db_response.is_err() {
+        // add ip to db and give result
+        let db_response = send_to_mpsc(
+            InstructionKind::Register,
+            key_data.clone(),
+            mpsc_sender.get_ref().clone(),
+        )
+        .await;
+        db_response.map_err(CustomError::SqlxErr)?;
+        return Ok(web::Json(ResponseData {
+            id: 10,
+            msg: String::from("data from ip"),
+        }));
+    }
+
+    if let DbResult::QueryRes(queries_left) = db_response.unwrap() {
+        if queries_left > 0 {
+        let db_response = send_to_mpsc(
+            InstructionKind::Update,
+            key_data,
+            mpsc_sender.get_ref().clone(),
+        )
+        .await;
+        db_response.map_err(CustomError::SqlxErr)?;
+            return Ok(web::Json(ResponseData {
+                id: 10,
+                msg: String::from("data from ip"),
+            }));
+        } else {
+            return Err(CustomError::QuotaExhausted)?;
+        }
+    }
+
     Ok(web::Json(ResponseData {
         id: 10000,
         msg: String::from("default"),
