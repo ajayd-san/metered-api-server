@@ -1,31 +1,16 @@
-use sqlx::{self, sqlite::SqliteQueryResult, SqlitePool};
+use sqlx::{self, sqlite::SqliteQueryResult, Row, SqlitePool};
 
 use metered_api_server::KeyRegistarationData;
 
-pub struct DatabaseMgr {
-    pool: SqlitePool,
-}
+use crate::database::{DatabaseMgr, DbResult};
 
-const DB_URL: &str = "sqlite://api_key_data.db";
-
-#[derive(Debug)]
-pub enum DbResult {
-    Ok,
-    QueryRes(u32),
-}
 impl DatabaseMgr {
-    pub async fn new() -> Self {
-        //TODO: set max pool connnections to 8.
-        let pool = SqlitePool::connect(DB_URL).await.unwrap();
-        DatabaseMgr { pool }
-    }
-
-    pub async fn add_key(&self, key: &KeyRegistarationData) -> sqlx::Result<DbResult> {
+    pub async fn add_api_key(&self, key: &KeyRegistarationData) -> sqlx::Result<DbResult> {
         sqlx::query!(
             "
             INSERT INTO keys (api_key, queries_left) VALUES ($1, $2)
             ",
-            key.api_key,
+            key.key,
             key.quota_per_min
         )
         .execute(&self.pool)
@@ -34,12 +19,12 @@ impl DatabaseMgr {
         Ok(DbResult::Ok)
     }
 
-    pub async fn update_quota(&self, key: &KeyRegistarationData) -> sqlx::Result<DbResult> {
+    pub async fn update_quota_api_key(&self, key: &KeyRegistarationData) -> sqlx::Result<DbResult> {
         sqlx::query!(
             "
             UPDATE keys SET queries_left = queries_left - 1 WHERE api_key = $1
             ",
-            key.api_key
+            key.key
         )
         .execute(&self.pool)
         .await?;
@@ -48,12 +33,12 @@ impl DatabaseMgr {
         Ok(DbResult::Ok)
     }
 
-    pub async fn check_quota(&self, key: &KeyRegistarationData) -> sqlx::Result<DbResult> {
+    pub async fn check_quota_api_key(&self, key: &KeyRegistarationData) -> sqlx::Result<DbResult> {
         let res = sqlx::query!(
             "
             SELECT queries_left FROM keys WHERE api_key = $1
             ",
-            key.api_key
+            key.key
         )
         .fetch_one(&self.pool)
         .await?;
@@ -65,28 +50,42 @@ impl DatabaseMgr {
 
 #[cfg(test)]
 mod tests {
+    use metered_api_server::Db;
+
     use super::*;
 
     #[tokio::test]
     async fn test_update_query() {
         let dbm = DatabaseMgr::new().await;
         let key = KeyRegistarationData {
-            api_key: "idk".to_string(),
+            key: "idk".to_string(),
             quota_per_min: 1,
+            db_name: Db::API_KEY
         };
-        let before = dbm.check_quota(&key).await.unwrap();
-        dbm.update_quota(&key).await.unwrap();
-        let after = dbm.check_quota(&key).await.unwrap();
-        assert_eq!(after, before - 1);
+        let before = dbm.check_quota_api_key(&key).await.unwrap();
+        dbm.update_quota_api_key(&key).await.unwrap();
+        let after = dbm.check_quota_api_key(&key).await.unwrap();
+
+        let mut res = Vec::new();
+
+        for val in [before, after] {
+            match val {
+                DbResult::QueryRes(i) => res.push(i),
+                _ => unreachable!()
+            }
+        }
+        assert_eq!(*res.get(0).unwrap() - 1, *res.get(1).unwrap());
     }
 
     #[tokio::test]
     async fn test_add_key_fails() {
         let dbm = DatabaseMgr::new().await;
         let key = KeyRegistarationData {
-            api_key: "123".to_string(),
+            key: "123".to_string(),
             quota_per_min: 1,
+            db_name: Db::IP_BOOK
         };
-        assert!(dbm.add_key(&key).await.is_err());
+        assert!(dbm.add_api_key(&key).await.is_err());
     }
 }
+
