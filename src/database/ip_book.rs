@@ -1,4 +1,4 @@
-use metered_api_server::KeyRegistarationData;
+use crate::KeyRegistarationData;
 
 use super::{DatabaseMgr, DbResult};
 
@@ -43,5 +43,15 @@ impl DatabaseMgr {
 
         Ok(DbResult::QueryRes(res.queries_left.unwrap() as u32))
         // Err(sqlx::Error::RowNotFound)
+    }
+
+    pub async fn reset_quota_ip(&self) -> sqlx::Result<DbResult> {
+        sqlx::query!(
+            "
+            UPDATE ip_book SET queries_left = 10;
+            "
+            ).execute(&self.pool).await?;
+
+        Ok(DbResult::Ok)
     }
 }

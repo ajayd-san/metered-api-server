@@ -1,4 +1,10 @@
+mod database;
+pub mod mpsc_bridge;
+pub mod services;
+
+use database::DbResult;
 use serde::Serialize;
+use tokio::{sync::{mpsc, oneshot}, time::{self, Duration}};
 use uuid::Uuid;
 
 pub const TOO_MANY_REQUESTS_MSG: ErrorResponse = ErrorResponse {
@@ -8,6 +14,33 @@ pub const TOO_MANY_REQUESTS_MSG: ErrorResponse = ErrorResponse {
 pub const BAD_REQUEST_MSG: ErrorResponse = ErrorResponse {
     message: "bad credentials",
 };
+
+async fn send_to_mpsc(
+    instr_kind: InstructionKind,
+    key_data: KeyRegistarationData,
+    mpsc_sender: mpsc::Sender<(DbInstruction, oneshot::Sender<sqlx::Result<DbResult>>)>,
+) -> sqlx::Result<DbResult> {
+    let db_instruction = DbInstruction::new(instr_kind, key_data.clone());
+    let (oneshot_sender, oneshot_receiver) = oneshot::channel();
+    mpsc_sender
+        .send((db_instruction, oneshot_sender))
+        .await
+        .unwrap();
+    oneshot_receiver
+        .await
+        .map_err(actix_web::error::ErrorInternalServerError)
+        .unwrap()
+}
+
+pub async fn reset_quota(mpsc_sender: mpsc::Sender<(DbInstruction, oneshot::Sender<sqlx::Result<DbResult>>)>) {
+    loop {
+        time::sleep(Duration::from_secs(30*60)).await;
+        let key_data = KeyRegistarationData::get_with_exisiting("dummy", Db::API_KEY);
+        send_to_mpsc(InstructionKind::Reset, key_data, mpsc_sender.clone()).await.unwrap();
+        let key_data = KeyRegistarationData::get_with_exisiting("dummy", Db::IP_BOOK);
+        send_to_mpsc(InstructionKind::Reset, key_data, mpsc_sender.clone()).await.unwrap();
+    }
+}
 
 #[derive(Serialize)]
 pub struct ResponseData {
@@ -26,6 +59,7 @@ pub enum InstructionKind {
     Register,
     Update,
     Query,
+    Reset
 }
 
 #[derive(Debug)]

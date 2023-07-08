@@ -9,9 +9,9 @@ use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 
-use metered_api_server::{
+use crate::{
     Db, DbInstruction, InstructionKind, KeyRegistarationData, ResponseData, BAD_REQUEST_MSG,
-    TOO_MANY_REQUESTS_MSG,
+    TOO_MANY_REQUESTS_MSG, send_to_mpsc,
 };
 
 use thiserror::Error;
@@ -21,11 +21,11 @@ use crate::database::DbResult;
 
 #[derive(Debug, Error)]
 enum CustomError {
-    #[error("sqlx error hogaya bhai")]
+    #[error("Something wrong with sqlx")]
     SqlxErr(sqlx::Error),
     #[error("Quoata exhausted. Try again later.")]
     QuotaExhausted,
-    #[error("error i didn't care about bhai")]
+    #[error("Unexpected error occured.")]
     OtherErr,
 }
 
@@ -65,35 +65,12 @@ async fn register_client(
     >,
 ) -> impl Responder {
     let key_reg = KeyRegistarationData::new(Db::API_KEY);
-    let db_instruction = DbInstruction::new(InstructionKind::Register, key_reg.clone());
-    let (oneshot_sender, oneshot_receiver) = oneshot::channel();
-    mpsc_sender
-        .send((db_instruction, oneshot_sender))
-        .await
-        .unwrap();
-    let res = oneshot_receiver.await;
+    let res = send_to_mpsc(InstructionKind::Register, key_reg.clone(), mpsc_sender.as_ref().clone()).await;
 
     match res {
         Ok(_) => HttpResponse::Ok().json(key_reg),
         Err(e) => panic!(),
     }
-}
-
-async fn send_to_mpsc(
-    instr_kind: InstructionKind,
-    key_data: KeyRegistarationData,
-    mpsc_sender: mpsc::Sender<(DbInstruction, oneshot::Sender<sqlx::Result<DbResult>>)>,
-) -> sqlx::Result<DbResult> {
-    let db_instruction = DbInstruction::new(instr_kind, key_data.clone());
-    let (oneshot_sender, oneshot_receiver) = oneshot::channel();
-    mpsc_sender
-        .send((db_instruction, oneshot_sender))
-        .await
-        .unwrap();
-    oneshot_receiver
-        .await
-        .map_err(ErrorInternalServerError)
-        .unwrap()
 }
 
 #[get("/get")]
@@ -128,8 +105,7 @@ async fn get_data(
                     msg: String::from("data"),
                 }));
             } else {
-                //BUG: why cant i use .into()?
-                return Err(CustomError::QuotaExhausted)?;
+                return Err(CustomError::QuotaExhausted.into());
             }
         }
     }

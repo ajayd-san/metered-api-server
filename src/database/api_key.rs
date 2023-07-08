@@ -1,6 +1,6 @@
-use sqlx::{self, sqlite::SqliteQueryResult, Row, SqlitePool};
+use sqlx::{self, sqlite::SqliteQueryResult, Row, SqlitePool, query};
 
-use metered_api_server::KeyRegistarationData;
+use crate::KeyRegistarationData;
 
 use crate::database::{DatabaseMgr, DbResult};
 
@@ -46,11 +46,21 @@ impl DatabaseMgr {
         Ok(DbResult::QueryRes(res.queries_left.unwrap() as u32))
         // Err(sqlx::Error::RowNotFound)
     }
+
+    pub async fn reset_quota_api_key(&self) -> sqlx::Result<DbResult> {
+        sqlx::query!(
+            "
+            UPDATE keys SET queries_left = 10;
+            "
+            ).execute(&self.pool).await?;
+
+        Ok(DbResult::Ok)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use metered_api_server::Db;
+    use crate::Db;
 
     use super::*;
 
