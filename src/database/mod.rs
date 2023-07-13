@@ -1,7 +1,9 @@
 mod api_key;
 mod ip_book;
 
-use sqlx::{self, SqlitePool};
+use std::{fs, path::Path};
+
+use sqlx::{self, SqlitePool, Sqlite, migrate::MigrateDatabase};
 
 pub struct DatabaseMgr {
     pool: SqlitePool,
@@ -17,9 +19,23 @@ pub enum DbResult {
 
 impl DatabaseMgr {
     pub async fn new() -> Self {
-        //TODO: set max pool connnections to 8.
-        let pool = SqlitePool::connect(DB_URL).await.unwrap();
+        let pool = Self::setup().await.unwrap();
         DatabaseMgr { pool }
     }
-}
 
+    async fn setup() -> Result<SqlitePool, sqlx::Error> {
+        if !Sqlite::database_exists(&DB_URL).await.unwrap_or(false) {
+            println!("Database Not found.\nCreating database.");
+
+            match Sqlite::create_database(DB_URL).await {
+                Ok(_) => println!("create db success"),
+                Err(e) => return Err(e),
+            }
+        }
+
+        let pool = SqlitePool::connect(DB_URL).await.unwrap();
+        sqlx::migrate!().run(&pool).await?;
+
+        Ok(pool)
+    }
+}

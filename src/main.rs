@@ -19,7 +19,7 @@ async fn main() -> io::Result<()> {
             .service(register_client)
             .service(get_data)
     })
-    .bind(("localhost", 8080))?
+    .bind(("0.0.0.0", 8080))?
     .run()
     .await
 }

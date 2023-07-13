@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE ip_book SET queries_left = queries_left - 1 WHERE ip = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "4d70f83d4d7dee949955faa778d96c4fac304d2a890f273837d438ae01f843b1"
+}

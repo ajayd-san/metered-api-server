@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE keys SET queries_left = queries_left - 1 WHERE api_key = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "e9b8855f0fd12edbfcab57c92697c65e4993866de63a95b07146626ac622c5a7"
+}

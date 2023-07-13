@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO ip_book (ip, queries_left) VALUES ($1, $2)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "659f61c6da54d46d6418dd1e719dd0184ce4c57323f512691ccddcb42e92ce47"
+}

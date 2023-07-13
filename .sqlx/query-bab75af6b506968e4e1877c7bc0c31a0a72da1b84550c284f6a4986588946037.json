@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT queries_left FROM keys WHERE api_key = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "queries_left",
+        "ordinal": 0,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "bab75af6b506968e4e1877c7bc0c31a0a72da1b84550c284f6a4986588946037"
+}

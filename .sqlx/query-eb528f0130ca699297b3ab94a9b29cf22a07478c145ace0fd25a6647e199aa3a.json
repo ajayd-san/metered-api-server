@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE keys SET queries_left = 10;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "eb528f0130ca699297b3ab94a9b29cf22a07478c145ace0fd25a6647e199aa3a"
+}

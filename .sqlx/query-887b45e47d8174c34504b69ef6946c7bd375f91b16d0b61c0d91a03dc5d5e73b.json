@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            UPDATE ip_book SET queries_left = 10;\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "887b45e47d8174c34504b69ef6946c7bd375f91b16d0b61c0d91a03dc5d5e73b"
+}

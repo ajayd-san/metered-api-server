@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT queries_left FROM ip_book WHERE ip = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "queries_left",
+        "ordinal": 0,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "e70a1906229ec2456a19682bef64964af808714ad8a44effff39cb181ea1ace0"
+}
