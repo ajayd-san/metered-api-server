@@ -9,7 +9,7 @@ impl DatabaseMgr {
             INSERT INTO ip_book (ip, queries_left) VALUES ($1, $2)
             ",
             key.key,
-            key.quota_per_min
+            key.quota
         )
         .execute(&self.pool)
         .await?;
@@ -39,10 +39,14 @@ impl DatabaseMgr {
             key.key
         )
         .fetch_one(&self.pool)
-        .await?;
+        .await;
 
-        Ok(DbResult::QueryRes(res.queries_left.unwrap() as u32))
-        // Err(sqlx::Error::RowNotFound)
+        if res.is_err() {
+            self.add_ip(&key).await.unwrap();
+            return Ok(DbResult::QueryRes(10));
+        }
+
+        Ok(DbResult::QueryRes(res.unwrap().queries_left.unwrap() as u32))
     }
 
     pub async fn reset_quota_ip(&self) -> sqlx::Result<DbResult> {

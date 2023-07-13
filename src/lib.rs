@@ -2,10 +2,24 @@ mod database;
 pub mod mpsc_bridge;
 pub mod services;
 
+use std::fs;
+
 use database::DbResult;
+use lazy_static::lazy_static;
+use rand::{self, Rng};
 use serde::Serialize;
-use tokio::{sync::{mpsc, oneshot}, time::{self, Duration}};
+use tokio::{
+    sync::{mpsc, oneshot},
+    time::{self, Duration},
+};
 use uuid::Uuid;
+
+lazy_static! {
+    static ref QUOTES: Vec<String> = {
+        let quotes_str = fs::read_to_string("data/ye_quotes.json").unwrap();
+        serde_json::from_str(&quotes_str).unwrap()
+    };
+}
 
 pub const TOO_MANY_REQUESTS_MSG: ErrorResponse = ErrorResponse {
     message: "Quota exhausted try again later",
@@ -14,6 +28,12 @@ pub const TOO_MANY_REQUESTS_MSG: ErrorResponse = ErrorResponse {
 pub const BAD_REQUEST_MSG: ErrorResponse = ErrorResponse {
     message: "bad credentials",
 };
+
+fn get_random_quote<'a>() -> &'a str {
+    let mut rng = rand::thread_rng();
+    let index = rng.gen_range(0..QUOTES.len());
+    QUOTES.get(index).unwrap()
+}
 
 async fn send_to_mpsc(
     instr_kind: InstructionKind,
@@ -32,13 +52,19 @@ async fn send_to_mpsc(
         .unwrap()
 }
 
-pub async fn reset_quota(mpsc_sender: mpsc::Sender<(DbInstruction, oneshot::Sender<sqlx::Result<DbResult>>)>) {
+pub async fn reset_quota(
+    mpsc_sender: mpsc::Sender<(DbInstruction, oneshot::Sender<sqlx::Result<DbResult>>)>,
+) {
     loop {
-        time::sleep(Duration::from_secs(30*60)).await;
+        time::sleep(Duration::from_secs(30 * 60)).await;
         let key_data = KeyRegistarationData::get_with_exisiting("dummy", Db::API_KEY);
-        send_to_mpsc(InstructionKind::Reset, key_data, mpsc_sender.clone()).await.unwrap();
+        send_to_mpsc(InstructionKind::Reset, key_data, mpsc_sender.clone())
+            .await
+            .unwrap();
         let key_data = KeyRegistarationData::get_with_exisiting("dummy", Db::IP_BOOK);
-        send_to_mpsc(InstructionKind::Reset, key_data, mpsc_sender.clone()).await.unwrap();
+        send_to_mpsc(InstructionKind::Reset, key_data, mpsc_sender.clone())
+            .await
+            .unwrap();
     }
 }
 
@@ -51,7 +77,7 @@ pub struct ResponseData {
 #[derive(Debug, Serialize, Clone)]
 pub enum Db {
     API_KEY,
-    IP_BOOK
+    IP_BOOK,
 }
 
 #[derive(Debug)]
@@ -59,7 +85,7 @@ pub enum InstructionKind {
     Register,
     Update,
     Query,
-    Reset
+    Reset,
 }
 
 #[derive(Debug)]
@@ -68,10 +94,10 @@ pub struct DbInstruction {
     pub key_data: KeyRegistarationData,
 }
 
-#[derive(Serialize,Clone, Debug)]
+#[derive(Serialize, Clone, Debug)]
 pub struct KeyRegistarationData {
     pub key: String,
-    pub quota_per_min: u32,
+    pub quota: u32,
     pub db_name: Db,
 }
 
@@ -91,7 +117,7 @@ impl KeyRegistarationData {
         let api_key = Uuid::new_v4().simple().to_string();
         KeyRegistarationData {
             key: api_key,
-            quota_per_min: 10,
+            quota: 10,
             db_name,
         }
     }
@@ -99,8 +125,8 @@ impl KeyRegistarationData {
     pub fn get_with_exisiting(key: &str, db_name: Db) -> Self {
         KeyRegistarationData {
             key: key.to_string(),
-            quota_per_min: 10,
-            db_name
+            quota: 10,
+            db_name,
         }
     }
 }

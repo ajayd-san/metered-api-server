@@ -11,7 +11,7 @@ impl DatabaseMgr {
             INSERT INTO keys (api_key, queries_left) VALUES ($1, $2)
             ",
             key.key,
-            key.quota_per_min
+            key.quota
         )
         .execute(&self.pool)
         .await?;
@@ -69,7 +69,7 @@ mod tests {
         let dbm = DatabaseMgr::new().await;
         let key = KeyRegistarationData {
             key: "idk".to_string(),
-            quota_per_min: 1,
+            quota: 1,
             db_name: Db::API_KEY
         };
         let before = dbm.check_quota_api_key(&key).await.unwrap();
@@ -92,7 +92,7 @@ mod tests {
         let dbm = DatabaseMgr::new().await;
         let key = KeyRegistarationData {
             key: "123".to_string(),
-            quota_per_min: 1,
+            quota: 1,
             db_name: Db::IP_BOOK
         };
         assert!(dbm.add_api_key(&key).await.is_err());
