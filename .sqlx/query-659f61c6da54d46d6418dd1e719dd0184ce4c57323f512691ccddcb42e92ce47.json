@@ -1,10 +1,13 @@
 {
-  "db_name": "SQLite",
+  "db_name": "PostgreSQL",
   "query": "\n            INSERT INTO ip_book (ip, queries_left) VALUES ($1, $2)\n            ",
   "describe": {
     "columns": [],
     "parameters": {
-      "Right": 2
+      "Left": [
+        "Text",
+        "Int4"
+      ]
     },
     "nullable": []
   },

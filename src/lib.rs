@@ -97,7 +97,7 @@ pub struct DbInstruction {
 #[derive(Serialize, Clone, Debug)]
 pub struct KeyRegistarationData {
     pub key: String,
-    pub quota: u32,
+    pub quota: i32,
     pub db_name: Db,
 }
 

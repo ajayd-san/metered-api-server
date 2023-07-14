@@ -1,1 +1,1 @@
-CREATE TABLE ip_book (id integer primary key autoincrement, ip TEXT unique, queries_left integer);
+CREATE TABLE ip_book (id SERIAL primary key, ip TEXT unique, queries_left integer);

@@ -1,4 +1,4 @@
-use sqlx::{self, sqlite::SqliteQueryResult, Row, SqlitePool, query};
+use sqlx::{self};
 
 use crate::KeyRegistarationData;
 
@@ -43,8 +43,7 @@ impl DatabaseMgr {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(DbResult::QueryRes(res.queries_left.unwrap() as u32))
-        // Err(sqlx::Error::RowNotFound)
+        Ok(DbResult::QueryRes(res.queries_left.unwrap()))
     }
 
     pub async fn reset_quota_api_key(&self) -> sqlx::Result<DbResult> {

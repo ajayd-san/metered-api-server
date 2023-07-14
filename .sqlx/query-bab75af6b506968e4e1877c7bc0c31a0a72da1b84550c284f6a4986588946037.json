@@ -1,16 +1,18 @@
 {
-  "db_name": "SQLite",
+  "db_name": "PostgreSQL",
   "query": "\n            SELECT queries_left FROM keys WHERE api_key = $1\n            ",
   "describe": {
     "columns": [
       {
-        "name": "queries_left",
         "ordinal": 0,
-        "type_info": "Int64"
+        "name": "queries_left",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Left": [
+        "Text"
+      ]
     },
     "nullable": [
       true

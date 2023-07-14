@@ -46,7 +46,7 @@ impl DatabaseMgr {
             return Ok(DbResult::QueryRes(10));
         }
 
-        Ok(DbResult::QueryRes(res.unwrap().queries_left.unwrap() as u32))
+        Ok(DbResult::QueryRes(res.unwrap().queries_left.unwrap()))
     }
 
     pub async fn reset_quota_ip(&self) -> sqlx::Result<DbResult> {

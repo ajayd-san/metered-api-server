@@ -1,20 +1,18 @@
 mod api_key;
 mod ip_book;
 
-use std::{fs, path::Path};
-
-use sqlx::{self, SqlitePool, Sqlite, migrate::MigrateDatabase};
+use sqlx::{self, PgPool, migrate::MigrateDatabase, Postgres};
 
 pub struct DatabaseMgr {
-    pool: SqlitePool,
+    pool: PgPool,
 }
 
-const DB_URL: &str = "sqlite://api_key_data.db";
+const DB_URL: &str = "postgres://poweruser:@localhost/databases";
 
 #[derive(Debug, PartialEq)]
 pub enum DbResult {
     Ok,
-    QueryRes(u32),
+    QueryRes(i32),
 }
 
 impl DatabaseMgr {
@@ -23,17 +21,17 @@ impl DatabaseMgr {
         DatabaseMgr { pool }
     }
 
-    async fn setup() -> Result<SqlitePool, sqlx::Error> {
-        if !Sqlite::database_exists(&DB_URL).await.unwrap_or(false) {
+    async fn setup() -> Result<PgPool, sqlx::Error> {
+        if !Postgres::database_exists(&DB_URL).await.unwrap_or(false) {
             println!("Database Not found.\nCreating database.");
 
-            match Sqlite::create_database(DB_URL).await {
+            match Postgres::create_database(DB_URL).await {
                 Ok(_) => println!("create db success"),
                 Err(e) => return Err(e),
             }
         }
 
-        let pool = SqlitePool::connect(DB_URL).await.unwrap();
+        let pool = PgPool::connect(DB_URL).await.unwrap();
         sqlx::migrate!().run(&pool).await?;
 
         Ok(pool)
