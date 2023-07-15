@@ -1,0 +1,19 @@
+services:
+  api:
+    build:
+      context: .
+      target: final
+    command: ./metered_api_server
+
+  postgres:
+    volumes: 
+      - data:/var/lib/postgresql/data
+
+volumes:
+  data:
+
+
+
+
+
+

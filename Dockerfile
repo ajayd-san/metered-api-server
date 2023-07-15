@@ -20,5 +20,3 @@ RUN cargo build --release
 RUN mv ./target/release/metered_api_server .
 
 RUN cargo clean
-
-CMD ["./metered_api_server"]

@@ -54,11 +54,6 @@ impl error::ResponseError for CustomError {
     }
 }
 
-#[get("/")]
-async fn hola(res_data: web::Data<ResponseData>) -> impl Responder {
-    web::Json(res_data)
-}
-
 #[get("/register")]
 async fn register_client(
     mpsc_sender: web::Data<
