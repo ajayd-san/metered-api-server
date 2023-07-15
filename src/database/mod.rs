@@ -1,13 +1,14 @@
 mod api_key;
 mod ip_book;
 
+use std::env;
+
 use sqlx::{self, PgPool, migrate::MigrateDatabase, Postgres};
 
 pub struct DatabaseMgr {
     pool: PgPool,
 }
 
-const DB_URL: &str = "postgres://poweruser:@localhost/databases";
 
 #[derive(Debug, PartialEq)]
 pub enum DbResult {
@@ -22,16 +23,22 @@ impl DatabaseMgr {
     }
 
     async fn setup() -> Result<PgPool, sqlx::Error> {
-        if !Postgres::database_exists(&DB_URL).await.unwrap_or(false) {
+        let username = env::var("PG_USER").unwrap();
+        let host = env::var("HOST").unwrap();
+        let password = std::fs::read_to_string("/run/secrets/db_password").unwrap();
+
+
+        let db_url= format!("postgres://{}:{}@{}/databases", username, password, host);
+        if !Postgres::database_exists(&db_url).await.unwrap_or(false) {
             println!("Database Not found.\nCreating database.");
 
-            match Postgres::create_database(DB_URL).await {
+            match Postgres::create_database(&db_url).await {
                 Ok(_) => println!("create db success"),
                 Err(e) => return Err(e),
             }
         }
 
-        let pool = PgPool::connect(DB_URL).await.unwrap();
+        let pool = PgPool::connect(&db_url).await.unwrap();
         sqlx::migrate!().run(&pool).await?;
 
         Ok(pool)

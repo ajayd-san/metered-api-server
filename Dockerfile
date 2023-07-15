@@ -1,4 +1,13 @@
-FROM rust:1.70-slim-buster
+FROM rust:1.70-slim-buster AS dev
+
+WORKDIR /app
+
+RUN cargo install cargo-watch
+
+EXPOSE 8080
+
+
+FROM rust:1.70-slim-buster AS final
 
 WORKDIR /app
 
