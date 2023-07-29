@@ -4,6 +4,8 @@ services:
       context: .
       target: final
     command: ./metered_api_server
+    ports: 
+     - 8080:443
 
   postgres:
     volumes: 
