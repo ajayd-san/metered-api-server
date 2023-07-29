@@ -15,9 +15,12 @@ async fn main() -> io::Result<()> {
     tokio::spawn(async move { mpsc_bridge::bridge(receiver).await });
     tokio::spawn(reset_quota(sender.clone()));
     HttpServer::new(move || {
-        let cors = Cors::default().allowed_origin("http://localhost:3000");
+        let localhost_cors = Cors::default().allowed_origin("http://localhost:3000");
+        let netlify_cors = Cors::default().allowed_origin("https://meteredapi-frontend.netlify.app/");
+
         App::new()
-            .wrap(cors)
+            .wrap(localhost_cors)
+            .wrap(netlify_cors)
             .app_data(web::Data::new(sender.clone()))
             .service(register_client)
             .service(get_data)
