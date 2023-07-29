@@ -3,9 +3,10 @@ services:
     build:
       context: .
       target: final
+    image: kakshipth/metered-api-server:prod0.3
     command: ./metered_api_server
     ports: 
-     - 8080:443
+     - 443:8080
 
   postgres:
     volumes: 

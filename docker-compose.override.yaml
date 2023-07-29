@@ -1,4 +1,11 @@
 services:
   api:
+    build: 
+      context: .
+      target: dev
+    command: cargo watch -x check -x run
+    working_dir: /app
+    ports: 
+      - 443:8080
     volumes:
       - ./:/app
